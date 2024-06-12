@@ -16,29 +16,70 @@ database_url = f"postgresql://{data['user']}:{data['password']}@{data['host']}:{
 conn = psycopg2.connect(database_url)
 cur = conn.cursor()
 
-# Define the query to fetch working hour data from tables and summarize by consultant and by customer
-consultant_query = """SELECT consultant_name, sum(working_hours) FROM table_name
-                    GROUP BY consultant_name;
-                    """
+# Assign date for which we want to create hour report
+date = '2024-05-01'
 
-customer_query = """SELECT consultant_name, customer_name, sum(working_hours) FROM table_name
-                    GROUP BY customer_name;
-                    """
+# Define the query to fetch working hour data from tables and summarize by consultant and by customer
+consultant_query = """SELECT 
+                    employees.id AS employee_id,
+                    employees.name AS employee_name,
+                    ROUND(
+                        SUM(
+                            CASE 
+                                WHEN lunchBreak = TRUE THEN EXTRACT(EPOCH FROM (endTime - startTime)) / 3600.0 - 0.5
+                                ELSE EXTRACT(EPOCH FROM (endTime - startTime)) / 3600.0
+                            END
+                        ), 
+                        2
+                    ) AS total_working_hours, 
+                    DATE(startTime) AS working_date
+                    FROM 
+                        WorkingHours
+                    JOIN 
+                        Employees ON Employees.id = WorkingHours.employeeID
+                    WHERE 
+                        DATE(startTime) = %s  -- Replace with the desired date
+                    GROUP BY 
+                        employees.id, employees.name, DATE(startTime);"""
+
+customer_query = """SELECT 
+                    customers.id AS customer_id,
+                    customers.name AS customer_name,
+                    ROUND(
+                        SUM(
+                            CASE 
+                                WHEN lunchBreak = TRUE THEN EXTRACT(EPOCH FROM (endTime - startTime)) / 3600.0 - 0.5
+                                ELSE EXTRACT(EPOCH FROM (endTime - startTime)) / 3600.0
+                            END
+                        ), 
+                        2
+                    ) AS total_working_hours, 
+                    DATE(startTime) AS working_date
+                    FROM 
+                        WorkingHours
+                    JOIN 
+                        Customers ON Customers.id = WorkingHours.customerID
+                    WHERE 
+                        DATE(startTime) = %s  -- Replace with the desired date
+                    GROUP BY 
+                        customers.id, customers.name, DATE(startTime);"""
 
 # Execute the queries
-consultant_rows = cur.execute(consultant_query)
-customer_rows = cur.execute(customer_query)
+consultant_rows = cur.execute(consultant_query, (date,))
+consultant_fetch = cur.fetchall()
+customer_rows = cur.execute(customer_query, (date,))
+customer_fetch = cur.fetchall()
 
 # Write the rows to a text file
-with open("hour_report.txt", "a") as file:
+with open(f"hour_report_{date}.txt", "a") as file:
     file.write("Working hours grouped by consultant:\n")
-    for row in consultant_rows:
-        file.write(row)
+    for row in consultant_fetch:
+        file.write(f"{row[0]} {row[1]} {row[2]} {row[3]}\n")
 
-with open("hour_report.txt", "a") as file:
+with open(f"hour_report_{date}.txt", "a") as file:
     file.write("Working hours grouped by customer:\n")
-    for row in customer_rows:
-        file.write(row)
+    for row in customer_fetch:
+        file.write(f"{row[0]} {row[1]} {row[2]} {row[3]}\n")
 
 # <--- REPORTING SECTION ENDS --->
 
@@ -47,10 +88,10 @@ with open("hour_report.txt", "a") as file:
 # <--- AZURE BLOB STORAGE SECTION STARTS --->
 
 # Define connection and blob variables
-container_name = "hour_report_container"
-blob_name = "hour_report"
-file_path = "hour_report.txt"
-connection_string = ""
+container_name = "timemanagementblob"
+blob_name = f"hour_report_{date}.txt"
+file_path = f"hour_report_{date}.txt"
+connection_string = "DefaultEndpointsProtocol=https;AccountName=timemanagementproject;AccountKey=AnWhAVQpchH6JizwOP8Z9QCvfcSO96Yh/S+qsojGJml8Va6zORAOPRkZ16KNPhs8vv3RzxJku+Mt+AStOmVADA==;EndpointSuffix=core.windows.net"
 
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
     
@@ -69,4 +110,4 @@ with open(file_path, "rb") as data:
     blob_client.upload_blob(data, overwrite=True)
     print(f"File {file_path} uploaded to blob {blob_name} in container {container_name}.")
 
-# <--- AZURE BLOB STORAGE SECTION ENDS --->
+# <--- AZURE BLOB STORAGE SECTION ENDS --->"""
