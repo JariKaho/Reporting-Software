@@ -3,7 +3,7 @@ import os
 from psycopg2 import sql
 from config import config
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-
+from tabulate import tabulate
 
 
 # <--- REPORTING SECTION STARTS --->
@@ -70,16 +70,36 @@ consultant_fetch = cur.fetchall()
 customer_rows = cur.execute(customer_query, (date,))
 customer_fetch = cur.fetchall()
 
+# Format the table to have a prettier output
+consultant_headers = ["ID", "Consultant Name", "Total Working Hours", "Date"]
+master_consultant_list = []
+master_consultant_list.append(consultant_headers)
+for row in consultant_fetch:
+    sub_list = []
+    for item in row:
+        sub_list.append(item)
+    master_consultant_list.append(sub_list)
+
+customer_headers = ["ID", "Customer Name", "Total Working Hours", "Date"]
+master_customer_list = []
+master_customer_list.append(customer_headers)
+for row in customer_fetch:
+    sub_list = []
+    for item in row:
+        sub_list.append(item)
+    master_customer_list.append(sub_list)
+
 # Write the rows to a text file
-with open(f"hour_report_{date}.txt", "a") as file:
+with open(f"hour_report_{date}.txt", "w") as file:
     file.write("Working hours grouped by consultant:\n")
-    for row in consultant_fetch:
-        file.write(f"{row[0]} {row[1]} {row[2]} {row[3]}\n")
+    file.write('\n')
+    file.write(tabulate(master_consultant_list, tablefmt="github"))
+    file.write('\n\n') 
 
 with open(f"hour_report_{date}.txt", "a") as file:
     file.write("Working hours grouped by customer:\n")
-    for row in customer_fetch:
-        file.write(f"{row[0]} {row[1]} {row[2]} {row[3]}\n")
+    file.write('\n')
+    file.write(tabulate(master_customer_list, tablefmt="github"))
 
 # <--- REPORTING SECTION ENDS --->
 
@@ -91,9 +111,9 @@ with open(f"hour_report_{date}.txt", "a") as file:
 container_name = "timemanagementblob"
 blob_name = f"hour_report_{date}.txt"
 file_path = f"hour_report_{date}.txt"
-connection_string = "DefaultEndpointsProtocol=https;AccountName=timemanagementproject;AccountKey=AnWhAVQpchH6JizwOP8Z9QCvfcSO96Yh/S+qsojGJml8Va6zORAOPRkZ16KNPhs8vv3RzxJku+Mt+AStOmVADA==;EndpointSuffix=core.windows.net"
+pass_token = os.environ.get('azure_storage_pass')
 
-blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+blob_service_client = BlobServiceClient.from_connection_string(pass_token)
     
 # Create the container if it doesn't already exist
 container_client = blob_service_client.get_container_client(container_name)
@@ -110,4 +130,4 @@ with open(file_path, "rb") as data:
     blob_client.upload_blob(data, overwrite=True)
     print(f"File {file_path} uploaded to blob {blob_name} in container {container_name}.")
 
-# <--- AZURE BLOB STORAGE SECTION ENDS --->"""
+# <--- AZURE BLOB STORAGE SECTION ENDS --->
