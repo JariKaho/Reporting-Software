@@ -90,8 +90,8 @@ def write_to_file(master_consultant_list, master_customer_list, DATE):
 CONTAINER_NAME = "timemanagementblob"
 BLOB_NAME = f"hour_report_{DATE}.txt"
 FILE_PATH = f"hour_report_{DATE}.txt"
-PASS_TOKEN = os.environ.get('azure_storage_pass')
-BLOB_SERVICE_CLIENT = BlobServiceClient.from_connection_string(PASS_TOKEN)
+PASS_URL = os.environ.get('azure_storage_pass')
+BLOB_SERVICE_CLIENT = BlobServiceClient(account_url=PASS_URL)
     
 # Create the container if it doesn't already exist
 def create_container():
