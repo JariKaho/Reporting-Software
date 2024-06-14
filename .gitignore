@@ -1,5 +1,6 @@
 __pycache__/
 venv/
 *.txt
+!requirements.txt
 *.ini
 database.ini
