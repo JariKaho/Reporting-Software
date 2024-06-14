@@ -227,6 +227,3 @@ def main():
     create_blob_and_upload()
 
 # <--- End of main program --->
-
-# <--- Run main program --->
-main()
