@@ -9,7 +9,7 @@ from tabulate import tabulate
 # <--- REPORTING SECTION STARTS --->
 
 # Assign helper date for which we want to create hour report
-DATE = '2024-05-01'
+DATE = '2024-05-02'
 
 # Create a connection url to the Azure PostgreSQL server using the configuration in database.ini
 def get_url():
